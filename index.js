@@ -21,8 +21,7 @@ const http = require('http').createServer(app);
 let server = http.listen(serverku.port, () =>
     console.log(`Server started, listening port: ${serverku.port}`)
 );
-/* const io = require('socket.io')(app)
- */
+
 const io = require('socket.io')(http, {
     cors: {
         origin: 'http://localhost:3000',
@@ -34,9 +33,36 @@ const io = require('socket.io')(http, {
 io.on('connection', (socket) => {
     console.log(socket.id);
     console.log('a user connected');
+
+    socket.on('todo-add', (data) => {
+        let sql = `INSERT INTO todolist(deskripsi) VALUES (?)`;
+        let values = [data.deskripsi];
+        db.query(sql, values, (error, results) => {
+            if (error) throw error;
+            io.emit('todo-add', {
+                data: {
+                    insertedID: results.insertId,
+                    deskripsi: data.deskripsi,
+                },
+            });
+        });
+    });
+
+    socket.on('todo-remove', (data) => {
+        let sql = `DELETE FROM todolist WHERE id=(?)`;
+        let values = [data];
+        db.query(sql, values, function (err) {
+            if (err) throw err;
+            io.emit('todo-remove', {
+                data: {
+                    deletedID: data,
+                },
+            });
+        });
+    });
 });
 
-app.get('/todo', auth, (req, res) => {
+app.get('/todo', (req, res) => {
     let sql = `SELECT * FROM todolist`;
     db.query(sql, (err, data) => {
         if (err) throw err;
@@ -54,7 +80,6 @@ app.post('/todo', auth, (req, res) => {
 });
 
 app.delete('/todo/:id', auth, function (req, res) {
-    console.log(req.params.id);
     let sql = `DELETE FROM todolist WHERE id=(?)`;
     let values = [req.params.id];
     db.query(sql, [values], function (err) {
