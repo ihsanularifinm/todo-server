@@ -4,6 +4,10 @@ const express = require('express'),
     db = require('./connection/db.js'),
     auth = require('./middleware/auth.js');
 
+let serverku = {
+    port: 3080,
+};
+
 app.use(express.json());
 app.use(cors());
 app.use(
@@ -12,9 +16,25 @@ app.use(
     })
 );
 
-var server = {
-    port: 3080,
-};
+const http = require('http').createServer(app);
+
+let server = http.listen(serverku.port, () =>
+    console.log(`Server started, listening port: ${serverku.port}`)
+);
+/* const io = require('socket.io')(app)
+ */
+const io = require('socket.io')(http, {
+    cors: {
+        origin: 'http://localhost:3000',
+        methods: ['GET', 'POST'],
+        credentials: true,
+    },
+});
+
+io.on('connection', (socket) => {
+    console.log(socket.id);
+    console.log('a user connected');
+});
 
 app.get('/todo', auth, (req, res) => {
     let sql = `SELECT * FROM todolist`;
@@ -99,8 +119,4 @@ app.delete(
             res.json({ pesan: 'terhapus' });
         });
     }
-);
-
-app.listen(server.port, () =>
-    console.log(`Server started, listening port: ${server.port}`)
 );
